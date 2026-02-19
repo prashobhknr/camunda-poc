@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - Door Installation Process</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/ui/dashboard" class="nav-brand">
+                <span class="brand-icon">🚪</span>
+                Door Installation POC
+            </a>
+            <ul class="nav-menu">
+                <li><a href="/ui/dashboard" class="nav-link">Dashboard</a></li>
+                <li><a href="/ui/start-process" class="nav-link">Start Process</a></li>
+                <li><a href="/ui/tasks" class="nav-link">Tasks</a></li>
+                <li><a href="/ui/processes" class="nav-link">Processes</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="content">
+            <div class="page-header">
+                <h1 class="page-title">📋 Task List</h1>
+                <p class="page-subtitle">View and manage your tasks</p>
+            </div>
+
+            <!-- Filter by User -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <form th:action="@{/ui/tasks}" method="get" style="display: flex; gap: 1rem; align-items: flex-end;">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label class="form-label" for="userId">Filter by User ID</label>
+                        <input type="text" id="userId" name="userId" 
+                               th:value="${userId}" 
+                               class="form-input" 
+                               placeholder="Enter user ID (e.g., engineer1)">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="/ui/tasks" class="btn btn-outline">Clear</a>
+                </form>
+            </div>
+
+            <!-- Task List -->
+            <div class="card">
+                <div class="card-header">
+                    📝 Tasks 
+                    <span th:if="${userId}" style="font-size: 0.875rem; color: var(--text-secondary);">
+                        (Assigned to: <strong th:text="${userId}">user</strong>)
+                    </span>
+                </div>
+
+                <div th:if="${#lists.isEmpty(tasks)}" class="flow-diagram">
+                    <div class="flow-diagram-icon">✅</div>
+                    <div class="flow-diagram-text">
+                        <span th:if="${userId}">No tasks assigned to you! Great job!</span>
+                        <span th:unless="${userId}">No tasks found. Start a new process to create tasks.</span>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <a href="/ui/start-process" class="btn btn-primary">Start New Process</a>
+                    </div>
+                </div>
+
+                <div th:if="${!#lists.isEmpty(tasks)}" class="task-list">
+                    <div th:each="task : ${tasks}" class="task-card">
+                        <div class="task-header">
+                            <div>
+                                <div class="task-name" th:text="${task.taskName}">Design Door</div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                    <span th:if="${task.assignee}">
+                                        👤 Assigned to: <strong th:text="${task.assignee}">user</strong>
+                                    </span>
+                                    <span th:unless="${task.assignee}" class="badge badge-warning">
+                                        Unassigned
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="task-actions">
+                                <a th:href="@{/ui/task/{id}/complete(id=${task.taskId})}" 
+                                   class="btn btn-primary"
+                                   th:if="${task.assignee}">
+                                    Complete
+                                </a>
+                                <a th:href="@{/ui/process-detail/{id}(id=${task.processInstanceId})}" 
+                                   class="btn btn-outline">
+                                    View Process
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                            <div class="meta-item">
+                                <div class="meta-label">Project ID</div>
+                                <div class="meta-value" th:text="${task.projectId}">PROJ-001</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Door Type</div>
+                                <div class="meta-value" th:text="${task.doorType}">Fire Door A</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Created</div>
+                                <div class="meta-value" th:text="${#dates.format(task.createTime, 'yyyy-MM-dd HH:mm')}">2024-01-01 10:00</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Task ID</div>
+                                <div class="meta-value" style="font-family: monospace; font-size: 0.875rem;" 
+                                     th:text="${#strings.abbreviate(task.taskId, 15)}">...</div>
+                            </div>
+                        </div>
+
+                        <div th:if="${task.description}" style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem;">
+                            <strong>Description:</strong>
+                            <p style="margin-top: 0.5rem;" th:text="${task.description}">Task description here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>Camunda 7 POC - Door Installation Process | <a href="http://localhost:8080/app/cockpit/" target="_blank">Camunda Cockpit</a></p>
+        </div>
+    </footer>
+</body>
+</html>

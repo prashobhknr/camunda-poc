@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Process - Door Installation</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/ui/dashboard" class="nav-brand">
+                <span class="brand-icon">🚪</span>
+                Door Installation POC
+            </a>
+            <ul class="nav-menu">
+                <li><a href="/ui/dashboard" class="nav-link">Dashboard</a></li>
+                <li><a href="/ui/start-process" class="nav-link">Start Process</a></li>
+                <li><a href="/ui/tasks" class="nav-link">Tasks</a></li>
+                <li><a href="/ui/processes" class="nav-link">Processes</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="content">
+            <div class="page-header">
+                <h1 class="page-title">🚀 Start New Door Installation Process</h1>
+                <p class="page-subtitle">Initiate a new door installation workflow</p>
+            </div>
+
+            <div class="card">
+                <form th:action="@{/ui/start-process}" th:object="${request}" method="post">
+                    <div class="form-group">
+                        <label class="form-label" for="projectId">Project ID *</label>
+                        <input type="text" id="projectId" th:field="*{projectId}" class="form-input" 
+                               placeholder="e.g., PROJ-001" required>
+                        <p class="form-help">Unique identifier for this door installation project</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="doorType">Door Type *</label>
+                        <select id="doorType" th:field="*{doorType}" class="form-select" required>
+                            <option value="">Select door type...</option>
+                            <option value="Fire Door A">Fire Door A</option>
+                            <option value="Fire Door B">Fire Door B</option>
+                            <option value="Security Door">Security Door</option>
+                            <option value="Standard Interior">Standard Interior</option>
+                            <option value="Exterior Door">Exterior Door</option>
+                            <option value="Glass Door">Glass Door</option>
+                            <option value="Rolling Door">Rolling Door</option>
+                        </select>
+                        <p class="form-help">Type of door to be installed</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="reviewerId">Reviewer ID *</label>
+                        <input type="text" id="reviewerId" th:field="*{reviewerId}" class="form-input" 
+                               placeholder="e.g., engineer1" required>
+                        <p class="form-help">User ID of the person who will review the design</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="designerId">Designer ID *</label>
+                        <input type="text" id="designerId" th:field="*{designerId}" class="form-input" 
+                               placeholder="e.g., designer1" required>
+                        <p class="form-help">User ID of the person responsible for design</p>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary btn-block">
+                            🚀 Start Process
+                        </button>
+                        <a href="/ui/dashboard" class="btn btn-outline">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Process Flow Info -->
+            <div class="card" style="margin-top: 2rem;">
+                <div class="card-header">
+                    📋 What Happens Next?
+                </div>
+                <div style="padding: 1rem 0;">
+                    <ol style="margin-left: 1.5rem; line-height: 2;">
+                        <li><strong>Design Task</strong> - Assigned to the designer for initial design</li>
+                        <li><strong>Review Task</strong> - Assigned to the reviewer for approval</li>
+                        <li><strong>Decision</strong> - Reviewer can Approve, Reject, or Request Changes</li>
+                        <li><strong>Installation</strong> - If approved, proceeds to installation</li>
+                        <li><strong>Quality Check</strong> - Final quality verification</li>
+                        <li><strong>Completion</strong> - Process completed successfully</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>Camunda 7 POC - Door Installation Process | <a href="http://localhost:8080/app/cockpit/" target="_blank">Camunda Cockpit</a></p>
+        </div>
+    </footer>
+</body>
+</html>

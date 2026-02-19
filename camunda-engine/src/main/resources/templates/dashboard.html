@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Door Installation Process</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/ui/dashboard" class="nav-brand">
+                <span class="brand-icon">🚪</span>
+                Door Installation POC
+            </a>
+            <ul class="nav-menu">
+                <li><a href="/ui/dashboard" class="nav-link">Dashboard</a></li>
+                <li><a href="/ui/start-process" class="nav-link">Start Process</a></li>
+                <li><a href="/ui/tasks" class="nav-link">Tasks</a></li>
+                <li><a href="/ui/processes" class="nav-link">Processes</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="content">
+            <div class="page-header">
+                <h1 class="page-title">📊 Process Dashboard</h1>
+                <p class="page-subtitle">Overview of door installation processes and tasks</p>
+            </div>
+
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" th:text="${activeProcesses}">0</div>
+                    <div class="stat-label">Active Processes</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <div class="stat-number" th:text="${totalTasks}">0</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                    <div class="stat-number" th:text="${pendingTasks}">0</div>
+                    <div class="stat-label">Pending Assignment</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                    <div class="stat-number" th:text="${assignedTasks}">0</div>
+                    <div class="stat-label">Assigned Tasks</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div class="card-header">⚡ Quick Actions</div>
+                <div class="btn-group">
+                    <a href="/ui/start-process" class="btn btn-primary">
+                        🚀 Start New Process
+                    </a>
+                    <a href="/ui/tasks" class="btn btn-secondary">
+                        📋 View All Tasks
+                    </a>
+                    <a href="/ui/processes" class="btn btn-outline">
+                        📊 View Processes
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Processes -->
+            <div class="card">
+                <div class="card-header">
+                    📁 Recent Process Instances
+                </div>
+                
+                <div th:if="${#lists.isEmpty(recentProcesses)}" class="flow-diagram">
+                    <div class="flow-diagram-icon">📭</div>
+                    <div class="flow-diagram-text">No processes started yet. Start your first door installation process!</div>
+                    <div style="margin-top: 1rem;">
+                        <a href="/ui/start-process" class="btn btn-primary">Start Process</a>
+                    </div>
+                </div>
+
+                <div th:if="${!#lists.isEmpty(recentProcesses)}" class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Process ID</th>
+                                <th>Project ID</th>
+                                <th>Door Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="proc : ${recentProcesses}">
+                                <td>
+                                    <code th:text="${#strings.abbreviate(proc.id, 20)}">...</code>
+                                </td>
+                                <td th:text="${proc.projectId}">PROJ-001</td>
+                                <td th:text="${proc.doorType}">Fire Door A</td>
+                                <td>
+                                    <a th:href="@{/ui/process-detail/{id}(id=${proc.id})}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                                        View Details
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Process Flow Overview -->
+            <div class="card" style="margin-top: 2rem;">
+                <div class="card-header">
+                    🔄 Process Flow Overview
+                </div>
+                <div class="flow-diagram">
+                    <div class="flow-diagram-icon">📋</div>
+                    <div class="flow-diagram-text">
+                        Door Installation Process: Start → Design Review → Safety Check → Installation → Quality Check → Complete
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <a href="http://localhost:8080/app/cockpit/" target="_blank" class="btn btn-outline">
+                            Open Camunda Cockpit ↗
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>Camunda 7 POC - Door Installation Process | <a href="http://localhost:8080/app/cockpit/" target="_blank">Camunda Cockpit</a></p>
+        </div>
+    </footer>
+</body>
+</html>

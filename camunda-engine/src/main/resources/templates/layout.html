@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Door Installation Process - Camunda POC</title>
+    <th:block th:replace="${title}"/>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/ui/dashboard" class="nav-brand">
+                <span class="brand-icon">🚪</span>
+                Door Installation POC
+            </a>
+            <ul class="nav-menu">
+                <li><a href="/ui/dashboard" class="nav-link">Dashboard</a></li>
+                <li><a href="/ui/start-process" class="nav-link">Start Process</a></li>
+                <li><a href="/ui/tasks" class="nav-link">Tasks</a></li>
+                <li><a href="/ui/processes" class="nav-link">Processes</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div th:if="${success}" class="alert alert-success">
+            ✅ <span th:text="${successMessage ?: 'Operation completed successfully!'}">Success!</span>
+        </div>
+        
+        <div th:if="${error}" class="alert alert-error">
+            ❌ <span th:text="${error}">Error occurred</span>
+        </div>
+
+        <div class="content">
+            <th:block th:replace="${content}"/>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>Camunda 7 POC - Door Installation Process | <a href="http://localhost:8080/app/cockpit/">Camunda Cockpit</a></p>
+        </div>
+    </footer>
+</body>
+</html>

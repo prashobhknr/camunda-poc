@@ -1,0 +1,121 @@
+# Camunda 7 POC Application Configuration
+
+# Server Configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# Camunda Configuration
+camunda:
+  bpm:
+    # Admin webapp
+    admin-user:
+      id: admin
+      password: admin
+      firstName: Admin
+    # Webapp context path
+    webapp:
+      application-path: /camunda
+    # Auto deployment of BPMN files
+    auto-deployment-enabled: true
+    deployment-name: door-installation-process
+    # Database configuration
+    database:
+      type: h2
+    # Process engine configuration
+    process-engine:
+      name: default
+      default-serialization-format: application/json
+    # CORS configuration for frontend
+    cors:
+      enabled: true
+      allowed-origins: "*"
+      allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+      allowed-headers: "Content-Type,Authorization"
+
+# Spring Boot Configuration
+spring:
+  application:
+    name: samrum-camunda-poc
+  
+  # H2 Database (Development)
+  datasource:
+    url: jdbc:h2:mem:camunda-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  
+  # H2 Console (for debugging)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  # Jackson JSON configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.samrum: DEBUG
+    org.camunda.bpm: INFO
+    org.camunda.bpm.engine: INFO
+    org.camunda.bpm.engine.persistence: WARN
+    org.springframework: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# Production Profile Configuration
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  # PostgreSQL Database (Production)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/samrum_camunda
+    username: ${DB_USERNAME:camunda}
+    password: ${DB_PASSWORD:camunda_password}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+  
+  h2:
+    console:
+      enabled: false
+
+camunda:
+  bpm:
+    database:
+      type: postgresql
+    # Disable auto-deployment in production (use CI/CD)
+    auto-deployment-enabled: false
+    # Restrict CORS in production
+    cors:
+      enabled: true
+      allowed-origins: "https://samrum.example.com"
+
+logging:
+  level:
+    root: WARN
+    com.samrum: INFO
+    org.camunda.bpm: WARN

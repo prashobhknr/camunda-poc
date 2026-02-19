@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_DoorManagement" 
+                  targetNamespace="http://eurostep.com/samrum/door-management">
+  
+  <!-- Process Definition -->
+  <bpmn:process id="door-management-process" 
+                name="Door Management Process" 
+                isExecutable="true"
+                camunda:versionTag="1.0.0">
+    
+    <!-- Documentation -->
+    <bpmn:documentation>
+      Door Management Process - POC for Samrum Modernization
+      This process handles door requests from submission to installation.
+      Source: Bizagi "Dörrprocessen helhet"
+    </bpmn:documentation>
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_DoorRequest" name="Door Request Submitted">
+      <bpmn:documentation>
+        Triggered when a new door request is submitted via web form or API
+      </bpmn:documentation>
+      <bpmn:outgoing>SequenceFlow_Validate</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Service Task: Auto-Validation -->
+    <bpmn:serviceTask id="ServiceTask_Validate" 
+                      name="Validate Request"
+                      camunda:class="com.eurostep.camunda.delegate.ValidateDoorRequestDelegate">
+      <bpmn:documentation>
+        Automatically validates the door request:
+        - Check required fields
+        - Verify budget availability
+        - Validate technical specifications
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_Validate</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_GatewayValidation</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Exclusive Gateway: Validation Result -->
+    <bpmn:exclusiveGateway id="Gateway_ValidationResult" 
+                           name="Valid Request?">
+      <bpmn:incoming>SequenceFlow_GatewayValidation</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_Reject</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_Approve</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- User Task: Reject and Notify -->
+    <bpmn:userTask id="UserTask_Reject" 
+                   name="Reject Request"
+                   camunda:assignee="${requestor}"
+                   camunda:formKey="forms:reject-door-request">
+      <bpmn:documentation>
+        Notify requestor of rejection with reason
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_Reject</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_ToEnd</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- User Task: Facility Manager Approval -->
+    <bpmn:userTask id="UserTask_FacilityApproval" 
+                   name="Facility Manager Approval"
+                   camunda:assignee="${facilityManager}"
+                   camunda:candidateGroups="facility-managers"
+                   camunda:formKey="forms:facility-approval"
+                   camunda:dueDate="${dueDate}">
+      <bpmn:documentation>
+        Facility manager reviews and approves the door request
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_Approve</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_AfterFacility</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- User Task: Security Manager Approval -->
+    <bpmn:userTask id="UserTask_SecurityApproval" 
+                   name="Security Manager Approval"
+                   camunda:assignee="${securityManager}"
+                   camunda:candidateGroups="security-managers"
+                   camunda:formKey="forms:security-approval">
+      <bpmn:documentation>
+        Security manager reviews access control requirements
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_AfterFacility</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_GatewayApprovals</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Exclusive Gateway: All Approvals -->
+    <bpmn:exclusiveGateway id="Gateway_AllApprovals" 
+                           name="All Approved?">
+      <bpmn:incoming>SequenceFlow_GatewayApprovals</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_CreateWorkOrder</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_RequestChanges</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Service Task: Create Work Order -->
+    <bpmn:serviceTask id="ServiceTask_CreateWorkOrder" 
+                      name="Create Work Order"
+                      camunda:class="com.eurostep.camunda.delegate.CreateWorkOrderDelegate"
+                      camunda:asyncBefore="true">
+      <bpmn:documentation>
+        Create work order in maintenance system
+        Generate work order number
+        Assign priority based on urgency
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_CreateWorkOrder</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_AssignTechnician</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- User Task: Assign Technician -->
+    <bpmn:userTask id="UserTask_AssignTechnician" 
+                   name="Assign Technician"
+                   camunda:assignee="${workOrderManager}"
+                   camunda:candidateGroups="work-order-managers"
+                   camunda:formKey="forms:assign-technician">
+      <bpmn:documentation>
+        Assign qualified technician to installation task
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_AssignTechnician</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_InstallDoor</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- User Task: Install Door -->
+    <bpmn:userTask id="UserTask_InstallDoor" 
+                   name="Install Door"
+                   camunda:assignee="${technician}"
+                   camunda:candidateGroups="technicians"
+                   camunda:formKey="forms:installation-checklist">
+      <bpmn:documentation>
+        Physical installation of door and accessories
+        Complete installation checklist
+        Upload photos
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_InstallDoor</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_QualityCheck</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- User Task: Quality Check -->
+    <bpmn:userTask id="UserTask_QualityCheck" 
+                   name="Quality Check"
+                   camunda:assignee="${qualityInspector}"
+                   camunda:candidateGroups="quality-inspectors"
+                   camunda:formKey="forms:quality-checklist">
+      <bpmn:documentation>
+        Verify installation meets quality standards
+        Test door operation
+        Verify access control integration
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_QualityCheck</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_GatewayQuality</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Exclusive Gateway: Quality Result -->
+    <bpmn:exclusiveGateway id="Gateway_QualityResult" 
+                           name="Quality Pass?">
+      <bpmn:incoming>SequenceFlow_GatewayQuality</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_Rework</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_UpdateAssets</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Service Task: Update Asset Register -->
+    <bpmn:serviceTask id="ServiceTask_UpdateAssets" 
+                      name="Update Asset Register"
+                      camunda:class="com.eurostep.camunda.delegate.UpdateAssetRegisterDelegate"
+                      camunda:asyncBefore="true">
+      <bpmn:documentation>
+        Update asset register with new door
+        Generate asset ID
+        Link to building information model
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_UpdateAssets</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_Notify</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Service Task: Notify Stakeholders -->
+    <bpmn:serviceTask id="ServiceTask_NotifyStakeholders" 
+                      name="Notify Stakeholders"
+                      camunda:class="com.eurostep.camunda.delegate.NotifyStakeholdersDelegate">
+      <bpmn:documentation>
+        Send completion notifications to:
+        - Requestor
+        - Facility manager
+        - Security manager
+        - Building occupants
+      </bpmn:documentation>
+      <bpmn:incoming>SequenceFlow_Notify</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_ToEndSuccess</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- End Events -->
+    <bpmn:endEvent id="EndEvent_Rejected" name="Request Rejected">
+      <bpmn:incoming>SequenceFlow_ToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="EndEvent_Completed" name="Door Installed">
+      <bpmn:incoming>SequenceFlow_ToEndSuccess</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="SequenceFlow_Validate" 
+                       sourceRef="StartEvent_DoorRequest" 
+                       targetRef="ServiceTask_Validate"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_GatewayValidation" 
+                       sourceRef="ServiceTask_Validate" 
+                       targetRef="Gateway_ValidationResult"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_Reject" 
+                       sourceRef="Gateway_ValidationResult" 
+                       targetRef="UserTask_Reject">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" 
+                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        ${valid == false}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_Approve" 
+                       sourceRef="Gateway_ValidationResult" 
+                       targetRef="UserTask_FacilityApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" 
+                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        ${valid == true}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_AfterFacility" 
+                       sourceRef="UserTask_FacilityApproval" 
+                       targetRef="UserTask_SecurityApproval"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_GatewayApprovals" 
+                       sourceRef="UserTask_SecurityApproval" 
+                       targetRef="Gateway_AllApprovals"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_CreateWorkOrder" 
+                       sourceRef="Gateway_AllApprovals" 
+                       targetRef="ServiceTask_CreateWorkOrder">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" 
+                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        ${allApproved == true}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_RequestChanges" 
+                       sourceRef="Gateway_AllApprovals" 
+                       targetRef="UserTask_FacilityApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" 
+                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        ${allApproved == false}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_AssignTechnician" 
+                       sourceRef="ServiceTask_CreateWorkOrder" 
+                       targetRef="UserTask_AssignTechnician"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_InstallDoor" 
+                       sourceRef="UserTask_AssignTechnician" 
+                       targetRef="UserTask_InstallDoor"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_QualityCheck" 
+                       sourceRef="UserTask_InstallDoor" 
+                       targetRef="UserTask_QualityCheck"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_GatewayQuality" 
+                       sourceRef="UserTask_QualityCheck" 
+                       targetRef="Gateway_QualityResult"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_Rework" 
+                       sourceRef="Gateway_QualityResult" 
+                       targetRef="UserTask_InstallDoor">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" 
+                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        ${qualityPass == false}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_UpdateAssets" 
+                       sourceRef="Gateway_QualityResult" 
+                       targetRef="ServiceTask_UpdateAssets">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression" 
+                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        ${qualityPass == true}
+      </bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_Notify" 
+                       sourceRef="ServiceTask_UpdateAssets" 
+                       targetRef="ServiceTask_NotifyStakeholders"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_ToEnd" 
+                       sourceRef="UserTask_Reject" 
+                       targetRef="EndEvent_Rejected"/>
+    
+    <bpmn:sequenceFlow id="SequenceFlow_ToEndSuccess" 
+                       sourceRef="ServiceTask_NotifyStakeholders" 
+                       targetRef="EndEvent_Completed"/>
+
+  </bpmn:process>
+
+  <!-- BPMN Diagram (Simplified) -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DoorManagement">
+    <bpmndi:BPMNPlane id="BPMNPlane_DoorManagement" bpmnElement="door-management-process">
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="BPMNShape_Start" bpmnElement="StartEvent_DoorRequest">
+        <dc:Bounds x="100" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Validate Task -->
+      <bpmndi:BPMNShape id="BPMNShape_Validate" bpmnElement="ServiceTask_Validate">
+        <dc:Bounds x="200" y="78" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Gateway Validation -->
+      <bpmndi:BPMNShape id="BPMNShape_GatewayValidation" bpmnElement="Gateway_ValidationResult">
+        <dc:Bounds x="350" y="103" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Facility Approval -->
+      <bpmndi:BPMNShape id="BPMNShape_Facility" bpmnElement="UserTask_FacilityApproval">
+        <dc:Bounds x="450" y="78" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- Security Approval -->
+      <bpmndi:BPMNShape id="BPMNShape_Security" bpmnElement="UserTask_SecurityApproval">
+        <dc:Bounds x="600" y="78" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      
+      <!-- End Event Completed -->
+      <bpmndi:BPMNShape id="BPMNShape_EndCompleted" bpmnElement="EndEvent_Completed">
+        <dc:Bounds x="1200" y="100" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

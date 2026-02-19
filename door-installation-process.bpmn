@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.15.0">
+  
+  <bpmn:process id="doorInstallationProcess" name="Door Installation Process" isExecutable="true" camunda:versionTag="1.0.0">
+    <bpmn:documentation>POC Process: Door Installation and Approval Workflow
+This process demonstrates the migration from Bizagi to Camunda 7.
+Business domain: Construction/Facility Management (Samrum)</bpmn:documentation>
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Door Request Received">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+      <bpmn:documentation>Triggered via REST API when a new door installation request is submitted</bpmn:documentation>
+    </bpmn:startEvent>
+
+    <!-- Sequence Flow: Start → Design Review -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_DesignReview" />
+
+    <!-- User Task: Design Review -->
+    <bpmn:userTask id="Task_DesignReview" name="Review Door Design">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:documentation>Technical team reviews the door design specifications, materials, and compliance with building codes</bpmn:documentation>
+      <bpmn:extensionElements>
+        <camunda:executionListener event="start">
+          <camunda:script scriptFormat="groovy"><![CDATA[
+            // Send notification to design team
+            notificationService.sendEmail(
+              execution.getVariable("designerEmail"),
+              "New Door Design for Review",
+              "Please review door design for project: " + execution.getVariable("projectName")
+            )
+          ]]></camunda:script>
+        </camunda:executionListener>
+        <camunda:taskListener event="create">
+          <camunda:script scriptFormat="groovy"><![CDATA[
+            // Auto-assign based on project
+            def project = execution.getVariable("projectId")
+            def assignee = userService.getDesignerForProject(project)
+            task.setAssignee(assignee)
+          ]]></camunda:script>
+        </camunda:taskListener>
+      </bpmn:extensionElements>
+      <bpmn:potentialOwner>
+        <bpmn:resourceAssignmentExpression>
+          <bpmn:formalExpression>GROUP_designer</bpmn:formalExpression>
+        </bpmn:resourceAssignmentExpression>
+      </bpmn:potentialOwner>
+    </bpmn:userTask>
+
+    <!-- Sequence Flow: Design Review → Decision Gateway -->
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_DesignReview" targetRef="Gateway_DesignDecision" />
+
+    <!-- Exclusive Gateway: Design Decision -->
+    <bpmn:exclusiveGateway id="Gateway_DesignDecision" name="Design Approved?">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ChangesRequested</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Sequence Flow: Approved → Final Approval -->
+    <bpmn:sequenceFlow id="Flow_Approved" name="Approved" sourceRef="Gateway_DesignDecision" targetRef="Task_FinalApproval">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approvalStatus == 'approved'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- Sequence Flow: Changes Requested → Revise Design -->
+    <bpmn:sequenceFlow id="Flow_ChangesRequested" name="Changes Requested" sourceRef="Gateway_DesignDecision" targetRef="Task_ReviseDesign">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approvalStatus == 'changes_requested'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- Sequence Flow: Rejected → End -->
+    <bpmn:sequenceFlow id="Flow_Rejected" name="Rejected" sourceRef="Gateway_DesignDecision" targetRef="EndEvent_Rejected">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approvalStatus == 'rejected'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <!-- User Task: Revise Design -->
+    <bpmn:userTask id="Task_ReviseDesign" name="Revise Door Design">
+      <bpmn:incoming>Flow_ChangesRequested</bpmn:incoming>
+      <bpmn:incoming>Flow_RevisionComplete</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:documentation>Designer makes requested changes and resubmits for review</bpmn:documentation>
+      <bpmn:extensionElements>
+        <camunda:executionListener event="start">
+          <camunda:script scriptFormat="groovy"><![CDATA[
+            // Track revision count
+            def revisionCount = execution.getVariable("revisionCount") ?: 0
+            execution.setVariable("revisionCount", revisionCount + 1)
+            
+            // Warn if too many revisions
+            if (revisionCount >= 3) {
+              notificationService.sendAlert("Door design has been revised " + revisionCount + " times")
+            }
+          ]]></camunda:script>
+        </camunda:executionListener>
+      </bpmn:extensionElements>
+      <bpmn:potentialOwner>
+        <bpmn:resourceAssignmentExpression>
+          <bpmn:formalExpression>${task.assignee}</bpmn:formalExpression>
+        </bpmn:resourceAssignmentExpression>
+      </bpmn:potentialOwner>
+    </bpmn:userTask>
+
+    <!-- Sequence Flow: Revise → Back to Review -->
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_ReviseDesign" targetRef="Task_DesignReview" />
+
+    <!-- User Task: Final Approval -->
+    <bpmn:userTask id="Task_FinalApproval" name="Final Approval">
+      <bpmn:incoming>Flow_Approved</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:documentation>Project manager gives final approval for door installation</bpmn:documentation>
+      <bpmn:extensionElements>
+        <camunda:executionListener event="complete">
+          <camunda:delegateExpression expression="${approvalNotificationDelegate}" />
+        </camunda:executionListener>
+      </bpmn:extensionElements>
+      <bpmn:potentialOwner>
+        <bpmn:resourceAssignmentExpression>
+          <bpmn:formalExpression>GROUP_project_manager</bpmn:formalExpression>
+        </bpmn:resourceAssignmentExpression>
+      </bpmn:potentialOwner>
+    </bpmn:userTask>
+
+    <!-- Sequence Flow: Final Approval → Service Task -->
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_FinalApproval" targetRef="Task_CreateDoorRecord" />
+
+    <!-- Service Task: Create Door Record -->
+    <bpmn:serviceTask id="Task_CreateDoorRecord" name="Create Door Record in Database">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:documentation>Creates the door record in the business database with all approved specifications</bpmn:documentation>
+      <bpmn:extensionElements>
+        <camunda:delegateExpression expression="${createDoorRecordDelegate}" />
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+
+    <!-- Sequence Flow: Create Record → Send Notification -->
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_CreateDoorRecord" targetRef="Task_SendNotification" />
+
+    <!-- Service Task: Send Notification -->
+    <bpmn:serviceTask id="Task_SendNotification" name="Send Approval Notification">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:documentation>Sends email notifications to all stakeholders about the approved door installation</bpmn:documentation>
+      <bpmn:extensionElements>
+        <camunda:delegateExpression expression="${sendNotificationDelegate}" />
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+
+    <!-- Sequence Flow: Notification → End -->
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_SendNotification" targetRef="EndEvent_Approved" />
+
+    <!-- End Event: Approved -->
+    <bpmn:endEvent id="EndEvent_Approved" name="Door Approved &amp; Installed">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:documentation>Process completed successfully - door is approved and ready for installation</bpmn:documentation>
+    </bpmn:endEvent>
+
+    <!-- End Event: Rejected -->
+    <bpmn:endEvent id="EndEvent_Rejected" name="Door Request Rejected">
+      <bpmn:incoming>Flow_Rejected</bpmn:incoming>
+      <bpmn:documentation>Process ended - door design was rejected and cannot proceed</bpmn:documentation>
+    </bpmn:endEvent>
+
+  </bpmn:process>
+
+  <!-- BPMN Diagram Elements -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="doorInstallationProcess">
+      
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="158" y="142" width="79" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Design Review Task -->
+      <bpmndi:BPMNShape id="Task_DesignReview_di" bpmnElement="Task_DesignReview">
+        <dc:Bounds x="270" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Decision Gateway -->
+      <bpmndi:BPMNShape id="Gateway_DesignDecision_di" bpmnElement="Gateway_DesignDecision" isMarkerVisible="true">
+        <dc:Bounds x="425" y="92" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="418" y="149" width="64" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Revise Design Task -->
+      <bpmndi:BPMNShape id="Task_ReviseDesign_di" bpmnElement="Task_ReviseDesign">
+        <dc:Bounds x="420" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Final Approval Task -->
+      <bpmndi:BPMNShape id="Task_FinalApproval_di" bpmnElement="Task_FinalApproval">
+        <dc:Bounds x="550" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Create Door Record Task -->
+      <bpmndi:BPMNShape id="Task_CreateDoorRecord_di" bpmnElement="Task_CreateDoorRecord">
+        <dc:Bounds x="700" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Send Notification Task -->
+      <bpmndi:BPMNShape id="Task_SendNotification_di" bpmnElement="Task_SendNotification">
+        <dc:Bounds x="850" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- End Event: Approved -->
+      <bpmndi:BPMNShape id="EndEvent_Approved_di" bpmnElement="EndEvent_Approved">
+        <dc:Bounds x="1005" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="985" y="142" width="77" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- End Event: Rejected -->
+      <bpmndi:BPMNShape id="EndEvent_Rejected_di" bpmnElement="EndEvent_Rejected">
+        <dc:Bounds x="425" y="-50" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="405" y="-7" width="77" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Sequence Flows -->
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="215" y="117" />
+        <di:waypoint x="270" y="117" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="370" y="117" />
+        <di:waypoint x="425" y="117" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_Approved_di" bpmnElement="Flow_Approved">
+        <di:waypoint x="475" y="117" />
+        <di:waypoint x="550" y="117" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="490" y="95" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ChangesRequested_di" bpmnElement="Flow_ChangesRequested">
+        <di:waypoint x="450" y="142" />
+        <di:waypoint x="450" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="455" y="170" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_Rejected_di" bpmnElement="Flow_Rejected">
+        <di:waypoint x="450" y="92" />
+        <di:waypoint x="450" y="14" />
+        <di:waypoint x="443" y="14" />
+        <di:waypoint x="443" y="-14" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="455" y="50" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="420" y="280" />
+        <di:waypoint x="320" y="280" />
+        <di:waypoint x="320" y="157" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="650" y="117" />
+        <di:waypoint x="700" y="117" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="800" y="117" />
+        <di:waypoint x="850" y="117" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="950" y="117" />
+        <di:waypoint x="1005" y="117" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

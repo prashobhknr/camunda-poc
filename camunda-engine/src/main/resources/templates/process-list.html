@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>All Processes</title>
+</head>
+<body>
+    <th:block th:fragment="content">
+        <div class="container mt-4">
+            <h2>📊 All Processes (Active & Completed)</h2>
+            
+            <div class="mb-3">
+                <a href="/ui/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+                <a href="/ui/start-process" class="btn btn-primary">Start New Process</a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div th:if="${#lists.size(processes) == 0}" class="alert alert-info">
+                        No active processes found.
+                    </div>
+                    
+                    <table class="table table-striped" th:if="${#lists.size(processes) > 0}">
+                        <thead>
+                            <tr>
+                                <th>Process ID</th>
+                                <th>Project ID</th>
+                                <th>Door Type</th>
+                                <th>Status</th>
+                                <th>Tasks</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="proc : ${processes}">
+                                <td>
+                                    <code th:text="${#strings.abbreviate(proc.id, 18)}">-</code>
+                                </td>
+                                <td th:text="${proc.projectId ?: 'N/A'}">-</td>
+                                <td th:text="${proc.doorType ?: 'N/A'}">-</td>
+                                <td>
+                                    <span th:if="${proc.status == 'ACTIVE'}" class="badge bg-success">ACTIVE</span>
+                                    <span th:if="${proc.status == 'COMPLETED'}" class="badge bg-secondary">COMPLETED</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info" th:text="${proc.taskCount}">0</span>
+                                </td>
+                                <td>
+                                    <span th:if="${proc.duration != null}" 
+                                          th:text="${#numbers.formatDecimal(proc.duration / 1000, 1, 2)} + 's'">-</span>
+                                    <span th:unless="${proc.duration != null}">-</span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/ui/process-detail/{id}(id=${proc.id})}" 
+                                       class="btn btn-sm btn-primary">View Details</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </th:block>
+</body>
+</html>

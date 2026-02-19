@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+<head>
+    <title>Process Detail</title>
+</head>
+<body>
+    <th:block th:fragment="content">
+        <div class="container mt-4">
+            <h2>Process Instance Details</h2>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Process Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <tr>
+                            <th>Process Instance ID:</th>
+                            <td th:text="${processInstanceId}">-</td>
+                        </tr>
+                        <tr>
+                            <th>Business Key:</th>
+                            <td th:text="${businessKey}">-</td>
+                        </tr>
+                        <tr>
+                            <th>Process Definition ID:</th>
+                            <td th:text="${processDefinitionId}">-</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                <span th:if="${isCompleted}" class="badge bg-secondary">COMPLETED</span>
+                                <span th:unless="${isCompleted}" class="badge bg-success">ACTIVE</span>
+                            </td>
+                        </tr>
+                        <tr th:if="${isCompleted}">
+                            <th>Start Time:</th>
+                            <td th:text="${#dates.format(historicProcessInstance.startTime, 'yyyy-MM-dd HH:mm:ss')}">-</td>
+                        </tr>
+                        <tr th:if="${isCompleted}">
+                            <th>End Time:</th>
+                            <td th:text="${#dates.format(historicProcessInstance.endTime, 'yyyy-MM-dd HH:mm:ss')}">-</td>
+                        </tr>
+                        <tr th:if="${isCompleted}">
+                            <th>Duration:</th>
+                            <td th:text="${historicProcessInstance.durationInMillis / 1000} + ' seconds'">-</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Process Variables</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <tr th:each="entry : ${variables}">
+                            <th th:text="${entry.key}">Key</th>
+                            <td th:text="${entry.value}">Value</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Current Active Tasks -->
+            <div class="card mb-4" th:if="${currentTasks} and ${#lists.size(currentTasks) > 0}">
+                <div class="card-header">
+                    <h5>📋 Current Tasks</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Task Name</th>
+                                <th>Assignee</th>
+                                <th>Created</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="task : ${currentTasks}">
+                                <td th:text="${task.name}">Task Name</td>
+                                <td th:text="${task.assignee}">-</td>
+                                <td th:text="${#dates.format(task.createTime, 'yyyy-MM-dd HH:mm')}">-</td>
+                                <td>
+                                    <a th:href="@{/ui/task/{taskId}/complete(taskId=${task.id})}" 
+                                       class="btn btn-sm btn-primary">Complete</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historic Completed Tasks -->
+            <div class="card mb-4" th:if="${historicTasks} and ${#lists.size(historicTasks) > 0}">
+                <div class="card-header">
+                    <h5>✅ Completed Tasks History</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Task Name</th>
+                                <th>Assignee</th>
+                                <th>Started</th>
+                                <th>Completed</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="task : ${historicTasks}">
+                                <td>
+                                    <strong th:text="${task.name}">Task Name</strong>
+                                </td>
+                                <td th:text="${task.assignee}">-</td>
+                                <td th:text="${#dates.format(task.startTime, 'yyyy-MM-dd HH:mm')}">-</td>
+                                <td th:text="${task.endTime != null ? #dates.format(task.endTime, 'yyyy-MM-dd HH:mm') : 'Not completed'}">-</td>
+                                <td>
+                                    <span th:if="${task.durationInMillis != null}" 
+                                          th:text="${task.durationInMillis / 1000} + 's'">-</span>
+                                    <span th:unless="${task.durationInMillis != null}">-</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <a href="/ui/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+                <a href="/ui/processes" class="btn btn-info">View All Processes</a>
+            </div>
+        </div>
+    </th:block>
+</body>
+</html>

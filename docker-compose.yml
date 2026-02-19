@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Camunda 7 POC Application
+  camunda-poc:
+    build:
+      context: ./camunda-engine
+      dockerfile: Dockerfile
+    container_name: samrum-camunda-poc
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - CAMUNDA_ADMIN_PASSWORD=admin
+    volumes:
+      - ./camunda-engine/src/main/resources/processes:/app/processes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/engine-rest"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - samrum-network
+
+  # PostgreSQL Database (for production-like testing)
+  postgres:
+    image: postgres:14-alpine
+    container_name: samrum-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=samrum_camunda
+      - POSTGRES_USER=camunda
+      - POSTGRES_PASSWORD=camunda_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - samrum-network
+    profiles:
+      - prod
+
+  # pgAdmin (Database management UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: samrum-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@samrum.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    depends_on:
+      - postgres
+    networks:
+      - samrum-network
+    profiles:
+      - prod
+
+networks:
+  samrum-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

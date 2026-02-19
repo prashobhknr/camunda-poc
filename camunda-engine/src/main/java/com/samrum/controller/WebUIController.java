@@ -115,6 +115,8 @@ public class WebUIController {
         LOG.info("✅ Process started: {}", processInstance.getId());
 
         redirectAttributes.addFlashAttribute("success", true);
+            redirectAttributes.addFlashAttribute("successMessage", "Task completed successfully!");
+            redirectAttributes.addFlashAttribute("successMessage", "Process started successfully!");
         redirectAttributes.addFlashAttribute("processInstanceId", processInstance.getId());
         redirectAttributes.addFlashAttribute("projectId", request.getProjectId());
 
@@ -215,6 +217,8 @@ public class WebUIController {
         LOG.info("Task completed successfully");
 
         redirectAttributes.addFlashAttribute("success", true);
+            redirectAttributes.addFlashAttribute("successMessage", "Task completed successfully!");
+            redirectAttributes.addFlashAttribute("successMessage", "Process started successfully!");
         redirectAttributes.addFlashAttribute("completedTaskId", taskId);
 
         return "redirect:/ui/process-detail/" + processInstanceId;
